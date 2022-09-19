@@ -1,0 +1,1 @@
+![](https://wikimedia.org/api/rest_v1/media/math/render/svg/e750e00a5179c59dd228cc3dcdb1818a4bb89c9d)
