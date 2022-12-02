@@ -31,7 +31,7 @@ inventory *read_elfs_inventory(FILE *inventory_file)
 	string_buffer[0] = 0;
 	while ((fgets(string_buffer, 1024, inventory_file) != NULL) && !has_digits(string_buffer));
 	if (!has_digits(string_buffer)) {
-		fprintf(stderr, "read_elf_inventory EOF");
+		fprintf(stderr, "read_elf_inventory EOF\n");
 		return NULL;
 	}
 	do {
@@ -57,6 +57,14 @@ inventory *read_elfs_inventory(FILE *inventory_file)
 	return result;
 }
 
+static
+int compare(const void *a, const void *b)
+{
+	int *f = (int *) a;
+	int *s = (int *) b;
+	return (*s) - (*f);
+}
+
 int main(int argc, char *argv[])
 {
 	FILE *inventory_file = NULL;
@@ -72,18 +80,23 @@ int main(int argc, char *argv[])
 	while ((current_inventory = read_elfs_inventory(inventory_file)) != NULL) {
 		if (elf_count == inventories_buffer_capacity) {
 			inventories_buffer_capacity = inventories_buffer_capacity ? 2 * inventories_buffer_capacity : 1;
-			inventories_buffer = (inventory **) calloc(sizeof(inventory *), inventories_buffer_capacity);
+			inventories_buffer = (inventory **) realloc(inventories_buffer, sizeof(inventory *) * inventories_buffer_capacity);
 		}
 		inventories_buffer[elf_count] = current_inventory;
 		elf_count++;
 	}
 
-	int max_total_calories = 0;
+	int top_3_total_calories[] = {0, 0, 0, 0};
 	for (int i = 0; i < elf_count; i++) {
-		int current_total_calories = inventories_buffer[i]->total_calories;
-		if (current_total_calories > max_total_calories) max_total_calories = current_total_calories;
+		top_3_total_calories[3] = inventories_buffer[i]->total_calories;
+		qsort(top_3_total_calories, 4, sizeof(int), compare);
 	}
-	fprintf(stdout, "%d\n", max_total_calories);
+	int sum = 0;
+	for (int i = 0; i < 3; i++) {
+		sum += top_3_total_calories[i];
+		fprintf(stdout, "%d: %d\n", i + 1, top_3_total_calories[i]);
+	}
+	fprintf(stdout, "sum of top 3 = %d\n", sum);
 
 	item_buffer_size = 0;
 	free(item_buffer);
