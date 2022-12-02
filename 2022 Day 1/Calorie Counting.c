@@ -15,27 +15,35 @@ int item_buffer_size = 0;
 int *item_buffer = NULL;
 char string_buffer[1024];
 
-inventory *read_elfs_inventory(FILE *inventory_file)
-{
-	int item_count = 0;
-	bool does_line_contain_digit = true;
-	while (fgets(string_buffer, 1024, inventory_file) && does_line_contain_digit) {
-		does_line_contain_digit = false;
-		char *w = string_buffer;
-		while (*w && !does_line_contain_digit) {
-			does_line_contain_digit = isdigit(*w);
-			w++;
-		}
-		if (does_line_contain_digit) {
-			if (item_count == item_buffer_size) {
-				item_buffer_size = item_buffer_size ? 2 * item_buffer_size : 1;
-				item_buffer = (int *) realloc(item_buffer, item_buffer_size * sizeof(int));
-			}
-			item_buffer[item_count] = strtol(string_buffer, NULL, 10);
-			item_count++;
+bool has_digits(char *str) {
+	for (; *str; str++) {
+		if (isdigit(*str)) {
+			return true;
 		}
 	}
-	if (item_count == 0) return NULL;
+	return false;
+}
+
+inventory *read_elfs_inventory(FILE *inventory_file)
+{
+	fprintf(stderr, "read_elfs_inventory\n");
+	int item_count = 0;
+	string_buffer[0] = 0;
+	while ((fgets(string_buffer, 1024, inventory_file) != NULL) && !has_digits(string_buffer));
+	if (!has_digits(string_buffer)) {
+		fprintf(stderr, "read_elf_inventory EOF");
+		return NULL;
+	}
+	do {
+		fprintf(stderr, "%s", string_buffer);
+		if (item_count == item_buffer_size) {
+			item_buffer_size = item_buffer_size ? 2 * item_buffer_size : 1;
+			item_buffer = (int *) realloc(item_buffer, item_buffer_size * sizeof(int));
+		}
+		item_buffer[item_count] = strtol(string_buffer, NULL, 10);
+		item_count++;
+		string_buffer[0] = 0;
+	} while (fgets(string_buffer, 1024, inventory_file) && has_digits(string_buffer));
 
 	inventory *result = (inventory *) malloc(sizeof(inventory));
 	result->total_calories = 0;
@@ -45,6 +53,7 @@ inventory *read_elfs_inventory(FILE *inventory_file)
 		result->calories[i] = item_buffer[i];
 		result->total_calories += item_buffer[i];
 	}
+	fprintf(stderr, "read_elf_inventory: total_calorie %d\n", result->total_calories);
 	return result;
 }
 
