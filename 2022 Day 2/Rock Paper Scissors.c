@@ -5,6 +5,9 @@ enum shape {
 	rock, paper, scissor
 };
 
+char *shape_str[] = {"rock", "paper", "scissor"};
+char *strategy_str[] = {"lose", "draw", "win"};
+
 enum strategy {
 	lose, draw, win
 };
@@ -13,20 +16,20 @@ typedef enum strategy strategy;
 
 typedef enum shape shape;
 
+// player_hand_matrix[opponent_hand][outcome]
+shape player_hand_matrix[3][3] = {
+	            // lose     draw     win
+	{/* rock    */ scissor, rock,    paper  },
+	{/* paper   */ rock,    paper,   scissor},
+	{/* scissor */ paper,   scissor, rock   }
+};
+
 struct game_round {
 	shape player_hand, opponent_hand;
 	strategy outcome;
 };
 
 typedef struct game_round game_round;
-
-int calculate_outcome(shape player_hand, shape opponent_hand)
-{
-	int diff = player_hand - opponent_hand;
-	if (diff < -1) diff += 3;
-	if (diff > 1) diff -= 3;
-	return diff - 1;
-}
 
 shape parse_opponent_hand(char h)
 {
@@ -41,14 +44,14 @@ shape parse_opponent_hand(char h)
 	}
 }
 
-shape parse_player_hand(char h)
+strategy parse_strategy(char h)
 {
 	switch(h) {
-		case 'X': return rock;
-		case 'Y': return paper;
-		case 'Z': return scissor;
+		case 'X': return lose;
+		case 'Y': return draw;
+		case 'Z': return win;
 		default: {
-			fprintf(stderr, "parse_player_hand: unknown character: %c\n", h);
+			fprintf(stderr, "parse_strategy: unknown character: %c\n", h);
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -56,11 +59,11 @@ shape parse_player_hand(char h)
 
 game_round *parse_next_game_round(FILE *strategy_guide_file)
 {
-	char opponent_hand_character, player_hand_character;
-	if (fscanf(strategy_guide_file, " %c %c", &opponent_hand_character, &player_hand_character) < 2) return NULL;
+	char opponent_hand_character, strategy_character;
+	if (fscanf(strategy_guide_file, " %c %c", &opponent_hand_character, &strategy_character) < 2) return NULL;
 	game_round *result = (game_round *) malloc(sizeof(game_round));
 	result->opponent_hand = parse_opponent_hand(opponent_hand_character);
-	result->player_hand = parse_player_hand(player_hand_character);
+	result->outcome = parse_strategy(strategy_character);
 	return result;
 }
 
@@ -88,16 +91,12 @@ int outcome_score(strategy outcome)
 
 int calculate_score(game_round *round)
 {
-	int outcome = calculate_outcome(round->player_hand, round->opponent_hand);
-	return outcome_score(outcome) + shape_score(round->player_hand);
+	return outcome_score(round->outcome) + shape_score(round->player_hand);
 }
 
 shape calculate_hand_for_strategy(shape opponent_hand, strategy s)
 {
-	int h = opponent_hand - s;
-	if (h < -1) h += 2;
-	if (h > 1) h -= 2;
-	return h;
+	return player_hand_matrix[opponent_hand][s];
 }
 
 int main(int argc, char *argv[])
@@ -123,6 +122,8 @@ int main(int argc, char *argv[])
 
 	int total_score = 0;
 	for (int i = 0; i < round_count; i++) {
+		rounds[i]->player_hand = calculate_hand_for_strategy(rounds[i]->opponent_hand, rounds[i]->outcome);
+		fprintf(stderr, "%d: %d %d %d %d\n", i, rounds[i]->opponent_hand, rounds[i]->outcome, rounds[i]->player_hand, calculate_score(rounds[i]));
 		total_score += calculate_score(rounds[i]);
 	}
 	fprintf(stdout, "total score = %d\n", total_score);
